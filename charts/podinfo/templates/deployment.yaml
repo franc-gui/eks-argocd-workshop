@@ -1,0 +1,39 @@
+# =============================================================================
+# deployment.yaml — Deployment du microservice podinfo
+# =============================================================================
+# Déploie {{ .Values.replicaCount }} réplique(s) de l'image podinfo.
+# L'image et le nombre de répliques sont paramétrés via values.yaml.
+# Le conteneur expose le port 9898 (nommé "http") et déclare une request CPU,
+# nécessaire au HPA (étape 7.5) pour calculer l'utilisation en % de la request.
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+    app: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: podinfo
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 9898
+              protocol: TCP
+          resources:
+            requests:
+              cpu: {{ .Values.resources.requests.cpu }}
+              memory: {{ .Values.resources.requests.memory }}
+            limits:
+              cpu: {{ .Values.resources.limits.cpu }}
+              memory: {{ .Values.resources.limits.memory }}

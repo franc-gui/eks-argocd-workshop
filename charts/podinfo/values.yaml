@@ -14,3 +14,13 @@ image:
   pullPolicy: IfNotPresent
 
 replicaCount: 1
+
+# Ressources du conteneur. La "request" CPU est indispensable pour que le HPA
+# (étape 7.5) puisse calculer l'utilisation CPU en pourcentage de la request.
+resources:
+  requests:
+    cpu: 50m
+    memory: 32Mi
+  limits:
+    cpu: 200m
+    memory: 128Mi
