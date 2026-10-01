@@ -30,6 +30,13 @@ spec:
             - name: http
               containerPort: 9898
               protocol: TCP
+          # Configuration de l'UI podinfo via variables d'environnement.
+          # podinfo (viper) : option --ui-xxx => variable PODINFO_UI_XXX.
+          env:
+            - name: PODINFO_UI_MESSAGE
+              value: {{ .Values.ui.message | quote }}
+            - name: PODINFO_UI_COLOR
+              value: {{ .Values.ui.color | quote }}
           resources:
             requests:
               cpu: {{ .Values.resources.requests.cpu }}

@@ -13,6 +13,13 @@ image:
   tag: "6.7.1"
   pullPolicy: IfNotPresent
 
+# Personnalisation de l'UI podinfo (injectée en variables d'environnement).
+# podinfo est une 12-factor app : --ui-message / --ui-color se pilotent via
+# PODINFO_UI_MESSAGE / PODINFO_UI_COLOR.
+ui:
+  message: "Bonjour depuis l'atelier GitOps !"
+  color: "#34577c"
+
 replicaCount: 1
 
 # Ressources du conteneur. La "request" CPU est indispensable pour que le HPA
