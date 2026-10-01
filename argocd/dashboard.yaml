@@ -1,0 +1,61 @@
+# =============================================================================
+# Application ArgoCD - Kubernetes Dashboard
+# =============================================================================
+# Déploie, en GitOps via ArgoCD, l'UI officielle Kubernetes Dashboard. Le
+# Dashboard donne une vue complète du cluster : workloads (Deployments, Pods,
+# Jobs…), statut/redémarrages des pods, events, logs et exec, config
+# (ConfigMaps/Secrets), réseau et stockage. Les graphiques d'utilisation
+# CPU / RAM (par nœud, namespace, pod) sont alimentés par le metrics-server.
+#
+# ℹ️  metrics-server : PAS besoin de le déployer ici. L'eksctl utilisé par
+#     l'atelier l'installe comme ADDON EKS par défaut à la création du cluster
+#     (visible dans les logs : "default addons metrics-server, vpc-cni, … will
+#     install them as EKS addons"). Vérifiable avec `kubectl top nodes`.
+#     On s'appuie donc sur ce metrics-server existant — inutile d'en déployer
+#     un second (qui ferait doublon sur l'APIService metrics.k8s.io).
+#
+# ⚠️  Cette Application pointe vers un dépôt Helm PUBLIC :
+#     rien à personnaliser ici (contrairement à l'Application podinfo).
+#
+# Appliquer :  kubectl apply -f argocd/dashboard.yaml
+# Suivre    :  kubectl -n argocd get applications
+# =============================================================================
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kubernetes-dashboard
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://kubernetes-retired.github.io/dashboard/
+    chart: kubernetes-dashboard
+    targetRevision: "7.10.0"
+    helm:
+      # Profil allégé pour la sandbox : une réplique par composant.
+      values: |
+        app:
+          scaling:
+            replicas: 1
+        # Le Dashboard v7 embarque plusieurs composants (web, api, auth,
+        # metrics-scraper) via Kong. On garde les valeurs par défaut, suffisantes
+        # pour l'atelier.
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kubernetes-dashboard
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 15s
+        factor: 2
+        maxDuration: 3m

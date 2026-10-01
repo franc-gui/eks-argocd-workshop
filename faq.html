@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FAQ animateur — Atelier GitOps (Helm + ArgoCD + EKS)</title>
+<style>
+  :root {
+    --bg: #0f1420;
+    --bg-alt: #161c2c;
+    --panel: #1c2438;
+    --text: #e6e9f0;
+    --muted: #9aa4b8;
+    --accent: #4f8cff;
+    --accent-2: #34d399;
+    --border: #2a3450;
+    --code-bg: #0b0f18;
+    --q-border: #5b6aa0;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+  }
+  .content { max-width: 820px; margin: 0 auto; padding: 40px 24px 100px; }
+  h1 { font-size: 1.7rem; margin: 0 0 6px; }
+  .lead { color: var(--muted); margin-bottom: 28px; }
+  a { color: var(--accent); }
+
+  .step-badge {
+    display: inline-block; background: var(--panel); color: var(--accent);
+    font-size: .72rem; font-weight: 700; letter-spacing: .05em;
+    padding: 3px 10px; border-radius: 20px; margin: 28px 0 10px;
+    text-transform: uppercase; border: 1px solid var(--border);
+  }
+  h2 { font-size: 1.25rem; margin: 6px 0 12px; }
+
+  details.qa {
+    background: var(--bg-alt); border: 1px solid var(--border);
+    border-left: 3px solid var(--q-border);
+    border-radius: 10px; margin: 10px 0; overflow: hidden;
+  }
+  details.qa summary {
+    cursor: pointer; padding: 12px 16px; font-weight: 600;
+    list-style: none; display: flex; align-items: center; gap: 10px; user-select: none;
+  }
+  details.qa summary::-webkit-details-marker { display: none; }
+  details.qa summary::before { content: "▶"; color: var(--accent); font-size: .7rem; transition: transform .2s; }
+  details.qa[open] summary::before { transform: rotate(90deg); }
+  details.qa .body { padding: 0 16px 14px; color: var(--muted); }
+  details.qa .body p { margin: 8px 0; }
+  code.inline { background: var(--panel); padding: 1px 6px; border-radius: 4px; font-size: .85em; }
+
+  .note {
+    background: #10273a; border-left: 4px solid #2f7fb8; border-radius: 10px;
+    padding: 12px 16px; margin: 16px 0; font-size: .92rem;
+  }
+  .toolbar { margin-bottom: 20px; }
+  .toolbar button {
+    background: var(--panel); color: var(--text); border: 1px solid var(--border);
+    border-radius: 8px; padding: 6px 12px; font-size: .82rem; cursor: pointer; margin-right: 8px;
+  }
+  .toolbar button:hover { background: var(--accent); color: #06101f; border-color: var(--accent); }
+</style>
+</head>
+<body>
+  <main class="content">
+    <h1>FAQ animateur — Atelier GitOps</h1>
+    <p class="lead">Questions probables des participants (débutants K8s/AWS), étape par étape, avec réponses
+    courtes à ressortir en séance. Volontairement léger — à enrichir au fil des questions réelles.</p>
+
+    <div class="note">
+      📌 Couverture actuelle : <strong>étapes 0 à 4</strong>. Les étapes suivantes seront ajoutées au fur et à
+      mesure de la validation. Chaque question est repliée ; cliquez pour dérouler la réponse.
+    </div>
+
+    <div class="toolbar">
+      <button onclick="document.querySelectorAll('details.qa').forEach(d=>d.open=true)">Tout déplier</button>
+      <button onclick="document.querySelectorAll('details.qa').forEach(d=>d.open=false)">Tout replier</button>
+    </div>
+
+    <!-- ÉTAPE 0 -->
+    <span class="step-badge">Étape 0 · Prérequis &amp; environnements</span>
+    <h2>Mise en place</h2>
+
+    <details class="qa"><summary>Pourquoi deux environnements (CloudShell vs poste local) ?</summary>
+      <div class="body"><p>CloudShell est authentifié sur la sandbox AWS : tout ce qui touche AWS/le cluster s'y
+      fait, sans risque pour un compte d'entreprise. Le poste local ne sert qu'à écrire le chart et faire du
+      <code class="inline">git</code> — <strong>jamais</strong> de commande AWS en local.</p></div>
+    </details>
+
+    <details class="qa"><summary>Je n'ai pas de compte AWS perso, c'est grave ?</summary>
+      <div class="body"><p>Non. L'accès AWS est fourni par la sandbox Pluralsight (compte <code class="inline">cloud_user</code>,
+      éphémère). Aucun compte perso ni carte bancaire requis.</p></div>
+    </details>
+
+    <details class="qa"><summary>Pourquoi installer eksctl mais pas aws/kubectl/git ?</summary>
+      <div class="body"><p>CloudShell fournit déjà <code class="inline">aws</code>, <code class="inline">kubectl</code>
+      et <code class="inline">git</code>. Seul <code class="inline">eksctl</code> (création du cluster EKS) manque
+      et s'installe en une commande.</p></div>
+    </details>
+
+    <details class="qa"><summary>C'est quoi « Safe Paste » dans CloudShell ?</summary>
+      <div class="body"><p>Une confirmation de sécurité quand on colle plusieurs lignes d'un coup : cliquer sur
+      <strong>Paste</strong>. Sans ça, le collage multi-lignes (heredoc notamment) peut être tronqué.</p></div>
+    </details>
+
+    <!-- ÉTAPE 1 -->
+    <span class="step-badge">Étape 1 · Créer le cluster EKS</span>
+    <h2>Création du cluster</h2>
+
+    <details class="qa"><summary>Pourquoi ça prend 15-20 minutes ?</summary>
+      <div class="body"><p>eksctl crée le cluster via CloudFormation : d'abord le <strong>control plane</strong>
+      (géré par AWS) + le réseau, puis les <strong>nœuds EC2</strong>. Ces provisionnements AWS sont longs par
+      nature. On lance la création tôt et on enchaîne sur la théorie pendant ce temps.</p></div>
+    </details>
+
+    <details class="qa"><summary>C'est quoi un « managed node group » ?</summary>
+      <div class="body"><p>Un groupe de nœuds (ici 2 × t3.medium) dont AWS gère le cycle de vie (création,
+      mises à jour, remplacement). On déclare juste le type et le nombre ; AWS s'occupe du reste.</p></div>
+    </details>
+
+    <details class="qa"><summary>L'avertissement « Auto Mode will be enabled… », je dois faire quelque chose ?</summary>
+      <div class="body"><p>Non. C'est une notice sur un comportement <em>futur</em> d'eksctl. Aujourd'hui, le mode
+      classique (nœuds managés qu'on contrôle) s'applique — exactement ce qu'on veut.</p></div>
+    </details>
+
+    <details class="qa"><summary>Si CloudShell se déconnecte pendant la création ?</summary>
+      <div class="body"><p>Pas de panique : la création continue côté AWS (CloudFormation). On rouvre CloudShell,
+      on recolle le <code class="inline">cluster.yaml</code> puis on reconfigure kubectl avec
+      <code class="inline">aws eks update-kubeconfig</code>.</p></div>
+    </details>
+
+    <details class="qa"><summary>Pourquoi EKS 1.34 ? Et si eksctl la refuse ?</summary>
+      <div class="body"><p>La sandbox n'autorise que les versions en « standard support ». 1.34 l'est actuellement.
+      Si un jour eksctl la refuse, il affiche les versions valides du jour — on en reprend une (ex. 1.35).</p></div>
+    </details>
+
+    <!-- ÉTAPE 2/3 -->
+    <span class="step-badge">Étapes 2-3 · Théorie &amp; vérification</span>
+    <h2>Concepts &amp; contrôle du cluster</h2>
+
+    <details class="qa"><summary>En une phrase : Kubernetes, GitOps, Helm ?</summary>
+      <div class="body"><p><strong>Kubernetes</strong> orchestre des conteneurs à partir d'un état décrit en YAML.
+      <strong>GitOps</strong> fait de Git la source de vérité (un agent réaligne le cluster sur le dépôt).
+      <strong>Helm</strong> est le gestionnaire de paquets : des manifests <em>templatés</em> paramétrés par des
+      valeurs.</p></div>
+    </details>
+
+    <details class="qa"><summary>Où tournent les addons (vpc-cni, kube-proxy, coredns, metrics-server) ?</summary>
+      <div class="body"><p>Sur nos nœuds (le seul node group <code class="inline">ng-atelier</code>).
+      <code class="inline">vpc-cni</code> et <code class="inline">kube-proxy</code> sont des DaemonSets (un pod
+      par nœud) ; <code class="inline">coredns</code> et <code class="inline">metrics-server</code> sont des
+      Deployments posés par le scheduler. Le control plane, lui, est géré par AWS, hors de nos nœuds.</p></div>
+    </details>
+
+    <details class="qa"><summary>« 2 nœuds Ready » : c'est quoi un nœud, au juste ?</summary>
+      <div class="body"><p>Une machine (ici une instance EC2 t3.medium) qui exécute les pods. <code class="inline">Ready</code>
+      = le nœud a rejoint le cluster et peut accueillir des charges. On en a 2 pour la résilience.</p></div>
+    </details>
+
+    <!-- ÉTAPE 4 -->
+    <span class="step-badge">Étape 4 · Installer ArgoCD</span>
+    <h2>ArgoCD</h2>
+
+    <details class="qa"><summary>C'est quoi ArgoCD, concrètement ?</summary>
+      <div class="body"><p>Un agent qui tourne dans le cluster et compare en continu l'état réel avec ce qui est
+      décrit dans un dépôt Git. En cas d'écart, il réaligne le cluster. On ne fait plus <code class="inline">kubectl
+      apply</code> à la main : on commite, ArgoCD applique.</p></div>
+    </details>
+
+    <details class="qa"><summary>Pourquoi <code>--server-side --force-conflicts</code> à l'installation ?</summary>
+      <div class="body"><p>Le manifest ArgoCD contient de grosses CRDs. L'apply « server-side » évite l'erreur
+      « annotation too long » du mode client-side ; <code class="inline">--force-conflicts</code> tranche les
+      conflits de propriété de champ en faveur de notre apply.</p></div>
+    </details>
+
+    <details class="qa"><summary>Que fait <code>kubectl wait … condition=available</code> ?</summary>
+      <div class="body"><p>Il bloque jusqu'à ce que le déploiement <code class="inline">argocd-server</code> ait
+      assez de pods prêts (ou timeout 300s). <code class="inline">condition met</code> = c'est prêt, on peut
+      continuer.</p></div>
+    </details>
+
+    <details class="qa"><summary>ArgoCD est installé mais je ne vois pas d'interface. Normal ?</summary>
+      <div class="body"><p>Oui. L'UI existe (service <code class="inline">argocd-server</code>) mais n'est pas
+      exposée. On y accède à l'étape 5 via un port-forward local (CloudShell ne peut pas ouvrir de port web).</p></div>
+    </details>
+
+    <details class="qa"><summary>ArgoCD = Argo Workflows ?</summary>
+      <div class="body"><p>Non. Même famille (projet Argo) mais outils différents : <strong>ArgoCD</strong> =
+      déploiement continu/GitOps ; <strong>Argo Workflows</strong> = moteur de pipelines/jobs.</p></div>
+    </details>
+
+    <!-- ÉTAPE 5 -->
+    <span class="step-badge">Étape 5 · Accès aux UIs (kubeconfig)</span>
+    <h2>Kubeconfig par jeton &amp; UI ArgoCD</h2>
+
+    <details class="qa"><summary>Pourquoi un kubeconfig par jeton au lieu d'<code>aws eks update-kubeconfig</code> ?</summary>
+      <div class="body"><p>Pour respecter la règle « jamais de commande AWS en local ». Le kubeconfig par jeton
+      s'authentifie avec un token Kubernetes (pas des identifiants AWS), donc on peut l'utiliser depuis le poste
+      local sans jamais appeler AWS.</p></div>
+    </details>
+
+    <details class="qa"><summary>Pourquoi passer par un port-forward et pas une URL publique ?</summary>
+      <div class="body"><p>CloudShell ne peut pas ouvrir de port web, et on ne veut pas exposer ArgoCD sur
+      internet. Le <code class="inline">port-forward</code> crée un tunnel local sécurisé
+      (<code class="inline">localhost:8080</code> → service dans le cluster) — simple et sans config réseau.</p></div>
+    </details>
+
+    <details class="qa"><summary>Le navigateur affiche « certificat non sécurisé », c'est grave ?</summary>
+      <div class="body"><p>Non. ArgoCD utilise un certificat auto-signé interne. En local, via le tunnel, c'est
+      attendu : on accepte l'avertissement.</p></div>
+    </details>
+
+    <details class="qa"><summary>Où est le mot de passe admin d'ArgoCD ?</summary>
+      <div class="body"><p>L'utilisateur est toujours <code class="inline">admin</code>. Le mot de passe est
+      généré automatiquement et stocké dans le secret <code class="inline">argocd-initial-admin-secret</code>
+      (on le décode en base64). On le récupère une fois, on le note.</p></div>
+    </details>
+
+    <details class="qa"><summary>Le token du kubeconfig expire quand ?</summary>
+      <div class="body"><p>Au bout de 24h (durée fixée à sa création). Au-delà, il faut régénérer le kubeconfig
+      dans CloudShell. De toute façon la sandbox ne vit que ~4h.</p></div>
+    </details>
+
+    <details class="qa"><summary><code>export KUBECONFIG</code> va-t-il casser mon kubectl habituel ?</summary>
+      <div class="body"><p>Non. <code class="inline">export KUBECONFIG=…</code> ne vaut que pour le terminal
+      courant et n'écrase pas <code class="inline">~/.kube/config</code>. Il faut le refaire dans chaque nouveau
+      terminal (ex. celui du port-forward et celui des commandes).</p></div>
+    </details>
+
+    <details class="qa"><summary>L'UI ArgoCD est vide, je n'ai rien raté ?</summary>
+      <div class="body"><p>Non, c'est normal : aucune Application n'est encore déclarée. On en crée une à
+      l'étape 6, elle apparaîtra alors dans l'UI.</p></div>
+    </details>
+
+    <details class="qa"><summary>Tous ces pods ArgoCD (<code>kubectl get all -n argocd</code>), à quoi servent-ils ?</summary>
+      <div class="body">
+        <p><strong>Les 3 essentiels pour l'atelier :</strong></p>
+        <p>• <code class="inline">application-controller</code> — le cerveau : compare en boucle Git ↔ cluster et
+        applique les écarts (la réconciliation GitOps). C'est un StatefulSet (nom en <code class="inline">-0</code>).<br>
+        • <code class="inline">repo-server</code> — clone le dépôt Git et <strong>rend le chart</strong>
+        (<code class="inline">helm template</code>). Les erreurs de chart apparaissent ici.<br>
+        • <code class="inline">server</code> — l'API + l'UI web (celle du port-forward 8080).</p>
+        <p><strong>Le support :</strong> <code class="inline">redis</code> = cache (accélère l'UI, pas de données
+        critiques).</p>
+        <p><strong>Présents par défaut mais non utilisés dans l'atelier :</strong>
+        <code class="inline">applicationset-controller</code> (génère des Applications en masse),
+        <code class="inline">dex-server</code> (SSO externe — ici on utilise le compte local
+        <code class="inline">admin</code>), <code class="inline">notifications-controller</code> (Slack/email).</p>
+        <p><strong>Mécanique K8s en dessous :</strong> chaque composant est un Deployment (ou StatefulSet pour le
+        controller) → qui crée un ReplicaSet → qui crée le Pod. Les Services en
+        <code class="inline">-metrics</code> exposent juste les métriques Prometheus de chaque composant.</p>
+      </div>
+    </details>
+
+    <!-- ÉTAPE 6 -->
+    <span class="step-badge">Étape 6 · Fork &amp; Application ArgoCD</span>
+    <h2>Déclarer l'application</h2>
+
+    <details class="qa"><summary>C'est quoi une « Application » ArgoCD ?</summary>
+      <div class="body"><p>Un objet Kubernetes (CRD) qui dit à ArgoCD : « surveille ce dépôt Git, à ce chemin,
+      et synchronise-le dans ce namespace ». Ici elle pointe vers <code class="inline">charts/podinfo</code> de
+      votre fork et déploie dans le namespace <code class="inline">podinfo</code>.</p></div>
+    </details>
+
+    <details class="qa"><summary>Pourquoi remplacer <code>repoURL</code> par l'URL de MON fork ?</summary>
+      <div class="body"><p>Parce qu'ArgoCD va suivre <em>votre</em> dépôt : c'est là que vous committerez vos
+      templates. S'il pointait vers le dépôt d'origine, vos commits ne seraient pas pris en compte.</p></div>
+    </details>
+
+    <details class="qa"><summary>L'app est <code>Synced/Healthy</code> mais rien n'est déployé. Normal ?</summary>
+      <div class="body"><p>Oui, si <code class="inline">templates/</code> est vide : Helm ne rend aucun manifest,
+      donc ArgoCD n'a rien à appliquer — mais l'app est bien « synchronisée » avec un dépôt… vide. Le namespace
+      <code class="inline">podinfo</code> sera créé au premier template.</p></div>
+    </details>
+
+    <details class="qa"><summary>Synced vs Healthy, quelle différence ?</summary>
+      <div class="body"><p><strong>Synced</strong> = l'état du cluster correspond à Git. <strong>Healthy</strong>
+      = les ressources déployées fonctionnent (pods Running, etc.). Une app peut être Synced mais Degraded (un pod
+      qui crashe), ou OutOfSync mais Healthy (un changement committé pas encore appliqué).</p></div>
+    </details>
+
+    <details class="qa"><summary><code>CreateNamespace=true</code>, à quoi ça sert ?</summary>
+      <div class="body"><p>C'est une option de sync qui dit à ArgoCD de créer automatiquement le namespace cible
+      (<code class="inline">podinfo</code>) s'il n'existe pas. Sans elle, il faudrait le créer à la main.</p></div>
+    </details>
+
+    <!-- ÉTAPE 7 -->
+    <span class="step-badge">Étape 7 · Construire le chart pas à pas</span>
+    <h2>Écrire les templates (le cœur du TP)</h2>
+
+    <details class="qa"><summary><code>helm lint</code> vs <code>helm template</code> ?</summary>
+      <div class="body"><p><code class="inline">lint</code> vérifie la structure du chart (syntaxe, valeurs
+      manquantes). <code class="inline">template</code> affiche le YAML final (valeurs substituées) — pratique
+      pour vérifier qu'il ne reste aucun <code class="inline">{{ }}</code> non résolu avant de committer.</p></div>
+    </details>
+
+    <details class="qa"><summary>Je commite, mais le cluster ne change pas tout de suite ?</summary>
+      <div class="body"><p>ArgoCD scrute le dépôt périodiquement (quelques minutes) ou via webhook. On peut forcer
+      depuis l'UI (bouton <strong>Refresh</strong> / <strong>Sync</strong>). Le délai est normal.</p></div>
+    </details>
+
+    <details class="qa"><summary>Pourquoi des <code>requests CPU</code> dès le Deployment (7.1) ?</summary>
+      <div class="body"><p>Parce que le HPA (7.5) calcule un pourcentage d'utilisation CPU <em>par rapport à la
+      requête</em>. Sans <code class="inline">requests.cpu</code>, le HPA ne peut rien calculer et reste
+      inopérant.</p></div>
+    </details>
+
+    <details class="qa"><summary>Comment podinfo lit <code>PODINFO_UI_MESSAGE</code> / <code>_COLOR</code> ?</summary>
+      <div class="body"><p>podinfo est une 12-factor app : chaque option se pilote par variable d'environnement
+      <code class="inline">PODINFO_&lt;SECTION&gt;_&lt;CLE&gt;</code>. Helm injecte ces variables depuis
+      <code class="inline">values.yaml</code> — changer la valeur et committer suffit à mettre à jour l'UI.</p></div>
+    </details>
+
+    <details class="qa"><summary>À quoi servent les sondes liveness et readiness ?</summary>
+      <div class="body"><p><strong>liveness</strong> (<code class="inline">/healthz</code>) : si elle échoue, K8s
+      redémarre le conteneur. <strong>readiness</strong> (<code class="inline">/readyz</code>) : si elle échoue,
+      K8s retire le pod du Service (plus de trafic) sans le tuer. Deux rôles complémentaires.</p></div>
+    </details>
+
+    <details class="qa"><summary>Le HPA reste à 1 pod, il ne marche pas ?</summary>
+      <div class="body"><p>Si. Au repos, le CPU est très bas (ex. <code class="inline">cpu: 2%/50%</code>), donc le
+      HPA garde le minimum (1 pod). Il ne scale que si la charge dépasse la cible. C'est le comportement
+      attendu.</p></div>
+    </details>
+
+    <details class="qa"><summary>Pourquoi <code>autoscaling/v2</code> et pas <code>v1</code> ?</summary>
+      <div class="body"><p>La v2 permet plusieurs métriques et la forme <code class="inline">Resource → cpu →
+      Utilization</code>. La v1 est limitée au seul CPU avec un champ dédié. La v2 est la version stable et
+      recommandée.</p></div>
+    </details>
+
+    <!-- ÉTAPE 8.1 -->
+    <span class="step-badge">Étape 8.1 · Kubernetes Dashboard</span>
+    <h2>UI de supervision du cluster</h2>
+
+    <details class="qa"><summary>Faut-il déployer metrics-server ?</summary>
+      <div class="body"><p>Non. L'<code class="inline">eksctl</code> de l'atelier l'installe comme <strong>addon
+      EKS par défaut</strong> à la création du cluster. On s'appuie dessus — en déployer un second ferait doublon
+      sur l'API <code class="inline">metrics.k8s.io</code>. On le vérifie avec
+      <code class="inline">kubectl top nodes</code>.</p></div>
+    </details>
+
+    <details class="qa"><summary>Pourquoi le port <code>8443</code> et le service <code>kong-proxy</code> ?</summary>
+      <div class="body"><p>Le Dashboard v7 s'expose en HTTPS via un proxy <strong>Kong</strong> sur le port
+      <code class="inline">443</code>. Le port-forward <code class="inline">8443:443</code> relie
+      <code class="inline">localhost:8443</code> à ce proxy.</p></div>
+    </details>
+
+    <details class="qa"><summary>D'où vient le token de connexion au Dashboard ?</summary>
+      <div class="body"><p>On crée un ServiceAccount <code class="inline">dashboard-admin</code> + un
+      ClusterRoleBinding, puis <code class="inline">kubectl create token</code> génère un jeton éphémère (~1h) à
+      coller dans l'UI. Un nouveau token se régénère avec la même commande.</p></div>
+    </details>
+
+    <details class="qa"><summary>Les graphiques CPU/RAM sont vides au début, c'est grave ?</summary>
+      <div class="body"><p>Non : le metrics-server collecte toutes les ~15 s. Attendez ~1 min après l'ouverture
+      pour voir les courbes se remplir. Si rien n'apparaît durablement, vérifiez
+      <code class="inline">kubectl top nodes</code>.</p></div>
+    </details>
+
+    <details class="qa"><summary><code>cluster-admin</code> pour le Dashboard, c'est risqué ?</summary>
+      <div class="body"><p>Oui en production. Ici c'est assumé (sandbox jetable) pour simplifier. Sur un vrai
+      cluster, on créerait un rôle restreint (lecture seule, namespace ciblé) au lieu de
+      <code class="inline">cluster-admin</code>.</p></div>
+    </details>
+
+    <!-- ÉTAPE 8.2 -->
+    <span class="step-badge">Étape 8.2 · Prometheus (kube-prometheus-stack)</span>
+    <h2>Collecte des métriques</h2>
+
+    <details class="qa"><summary>Prometheus et metrics-server, ce n'est pas la même chose ?</summary>
+      <div class="body"><p>Non. <strong>metrics-server</strong> fournit des métriques instantanées (CPU/RAM) pour
+      <code class="inline">kubectl top</code> et le HPA. <strong>Prometheus</strong> est un vrai système de
+      monitoring : il stocke des séries temporelles, permet des requêtes (PromQL), des graphiques et des
+      alertes.</p></div>
+    </details>
+
+    <details class="qa"><summary>Pourquoi « profil allégé » ? Qu'a-t-on désactivé ?</summary>
+      <div class="body"><p>Pour tenir sur la sandbox : pas d'<strong>Alertmanager</strong>, pas de
+      <strong>Grafana</strong>, une seule réplique Prometheus, rétention courte, pas de stockage persistant. On
+      garde l'essentiel : operator, Prometheus, node-exporter, kube-state-metrics.</p></div>
+    </details>
+
+    <details class="qa"><summary>La 1ʳᵉ synchro passe par OutOfSync / Progressing, c'est un bug ?</summary>
+      <div class="body"><p>Non. Le chart installe de grosses <strong>CRDs</strong> puis plusieurs composants ;
+      ArgoCD affiche des états transitoires le temps que tout se stabilise. L'option
+      <code class="inline">ServerSideApply=true</code> évite l'erreur « annotation too long » liée aux CRDs.</p></div>
+    </details>
+
+    <details class="qa"><summary>C'est quoi node-exporter et kube-state-metrics ?</summary>
+      <div class="body"><p><strong>node-exporter</strong> = métriques de l'OS de chaque nœud (CPU, mémoire,
+      disque, réseau) via un DaemonSet. <strong>kube-state-metrics</strong> = état des objets Kubernetes
+      (nombre de pods, deployments prêts, etc.). Les deux sont scrapés par Prometheus.</p></div>
+    </details>
+
+    <details class="qa"><summary>Est-ce que ça tient sur 2 nœuds t3.medium ?</summary>
+      <div class="body"><p>Oui, avec le profil allégé. Après installation, les nœuds restent sous ~50 % de RAM.
+      Un pic CPU transitoire au démarrage de Prometheus (ingestion initiale) est normal et redescend.</p></div>
+    </details>
+
+    <!-- ÉTAPE 8.3 -->
+    <span class="step-badge">Étape 8.3 · ServiceMonitor (podinfo scrapé)</span>
+    <h2>Relier podinfo à Prometheus</h2>
+
+    <details class="qa"><summary>C'est quoi un ServiceMonitor ?</summary>
+      <div class="body"><p>Une <strong>CRD</strong> installée par l'operator Prometheus. Elle décrit
+      <em>quel Service scraper</em> (via un selector de labels) et <em>sur quel endpoint</em>
+      (<code class="inline">port: http</code>, <code class="inline">path: /metrics</code>). Prometheus la détecte
+      et se met à collecter automatiquement — tout en déclaratif, en GitOps.</p></div>
+    </details>
+
+    <details class="qa"><summary>Pourquoi un <code>{{- if .Values.serviceMonitor.enabled }}</code> ?</summary>
+      <div class="body"><p>Pour rendre le template optionnel : si la CRD ServiceMonitor n'existe pas (Prometheus
+      pas installé), on peut désactiver le rendu via <code class="inline">values.yaml</code> et éviter une erreur.
+      Même logique que le garde du HPA.</p></div>
+    </details>
+
+    <details class="qa"><summary>Comment vérifier que Prometheus scrape bien podinfo ?</summary>
+      <div class="body"><p>Dans l'UI Prometheus (port-forward <code class="inline">9090</code>) :
+      <em>Status → Targets</em> → la cible <code class="inline">podinfo</code> doit être <code class="inline">UP</code>.
+      Ou en PromQL : <code class="inline">up{namespace="podinfo"}</code> doit renvoyer <code class="inline">1</code>.</p></div>
+    </details>
+
+    <details class="qa"><summary>La cible n'apparaît pas / est DOWN, que vérifier ?</summary>
+      <div class="body"><p>1) Les <strong>labels</strong> du <code class="inline">selector.matchLabels</code> du
+      ServiceMonitor correspondent-ils à ceux du <strong>Service</strong> podinfo (<code class="inline">app:
+      podinfo</code>) ? 2) Le <code class="inline">port</code> est-il référencé par son <strong>nom</strong>
+      (<code class="inline">http</code>) ? 3) Laissez 30-60 s à Prometheus pour découvrir le ServiceMonitor.</p></div>
+    </details>
+
+    <details class="qa"><summary>Pourquoi podinfo expose-t-il déjà <code>/metrics</code> ?</summary>
+      <div class="body"><p>podinfo embarque un endpoint Prometheus natif sur <code class="inline">/metrics</code>
+      (port 9898). On n'ajoute donc <strong>pas</strong> de code applicatif : on déclare juste le ServiceMonitor
+      pour que Prometheus vienne le lire.</p></div>
+    </details>
+
+    <div class="note" style="margin-top:40px">
+      ➕ À enrichir : ajoutez ici les questions réellement posées en séance (étapes 8.4 et 9 à venir).
+    </div>
+  </main>
+</body>
+</html>
