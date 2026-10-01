@@ -1,0 +1,23 @@
+# =============================================================================
+# service.yaml — Service du microservice podinfo
+# =============================================================================
+# Expose podinfo À L'INTÉRIEUR du cluster via un Service ClusterIP.
+# Le selector cible les pods portant le label "app: podinfo" (défini dans le
+# Deployment). Le trafic arrive sur le port 9898 et est routé vers le port
+# nommé "http" du conteneur (targetPort: http).
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+    app: {{ .Release.Name }}
+spec:
+  type: ClusterIP
+  selector:
+    app: {{ .Release.Name }}
+  ports:
+    - name: http
+      port: 9898
+      targetPort: http
+      protocol: TCP
